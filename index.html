@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ERP Insights Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'gray-900': '#1a202c', // Darker Slate
+              'gray-800': '#2d3748', // Slate
+              'gray-700': '#4a5568', // Lighter Slate
+              'gray-600': '#718096',
+              'gray-500': '#a0aec0',
+              'gray-400': '#cbd5e0',
+              'gray-300': '#e2e8f0',
+              'gray-200': '#edf2f7',
+              'gray-100': '#f7fafc',
+              'green-400': '#48bb78',
+              'green-500': '#38a169',
+              'green-600': '#2f855a',
+              'green-800': '#1c4532',
+            }
+          }
+        }
+      }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="importmap">
+    {
+      "imports": {
+        "@google/genai": "https://esm.sh/@google/genai@^1.10.0"
+      }
+    }
+    </script>
+</head>
+<body class="bg-gray-800 text-gray-200 font-sans">
+    <div class="relative flex h-screen bg-gray-800 text-gray-200 font-sans overflow-x-hidden">
+      <!-- Sidebar -->
+      <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-10 hidden md:hidden"></div>
+      <div id="sidebar" class="absolute z-20 h-full flex flex-col w-64 bg-gray-900 border-r border-green-800 transition-transform transform -translate-x-full md:relative md:translate-x-0">
+        <div class="flex items-center justify-center h-20 border-b border-green-800">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+            </svg>
+            <h1 class="text-2xl font-bold ml-2 text-white">ERP<span class="text-green-500">Insights</span></h1>
+        </div>
+        <div class="flex-1 overflow-y-auto">
+            <nav class="flex-1 px-4 py-4">
+                <a href="#" class="flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors duration-200 bg-green-500 text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                    </svg>
+                    <span class="ml-4">Dashboard</span>
+                </a>
+                <a href="#" class="flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors duration-200 text-gray-300 hover:bg-green-800 hover:text-white mt-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    <span class="ml-4">Sales</span>
+                </a>
+                <a href="#" class="flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors duration-200 text-gray-300 hover:bg-green-800 hover:text-white mt-2">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                    <span class="ml-4">Inventory</span>
+                </a>
+                <!-- Settings Section -->
+                <div class="mt-4">
+                  <h3 class="px-4 text-xs font-semibold uppercase text-gray-400 tracking-wider">Settings</h3>
+                  <div class="mt-2 space-y-3 px-2">
+                      <div>
+                        <label for="api-key-input" class="text-xs text-gray-300">Gemini API Key</label>
+                        <input
+                          type="password"
+                          id="api-key-input"
+                          placeholder="Enter your API Key"
+                          class="mt-1 w-full bg-gray-700 border border-gray-600 rounded-md px-2 py-1 text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-green-500"
+                        />
+                      </div>
+                      <div>
+                        <label for="model-select" class="text-xs text-gray-300">AI Model</label>
+                        <select id="model-select" class="mt-1 w-full bg-gray-700 border border-gray-600 rounded-md px-2 py-1 text-sm text-white focus:outline-none focus:ring-1 focus:ring-green-500">
+                            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                        </select>
+                      </div>
+                  </div>
+                </div>
+            </nav>
+        </div>
+        <div class="px-4 py-4 border-t border-green-800">
+            <div class="flex items-center">
+                <img class="h-10 w-10 rounded-full object-cover" src="https://picsum.photos/id/237/100/100" alt="User" />
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-white">Admin User</p>
+                    <p class="text-xs text-gray-400">admin@example.com</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+        <header class="flex justify-between items-center h-20 px-6 bg-gray-900 border-b border-green-800 flex-shrink-0 z-10">
+            <div class="flex items-center">
+                <button id="menu-button" class="p-2 mr-2 text-gray-400 rounded-md md:hidden hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-green-400">
+                    <span class="sr-only">Open main menu</span>
+                    <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
+                <h2 class="text-xl font-semibold text-white">Dashboard Overview</h2>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button class="p-2 text-gray-400 bg-gray-700 rounded-full hover:bg-green-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-green-400">
+                    <span class="sr-only">View notifications</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
+                </button>
+            </div>
+        </header>
+        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-800 p-4 sm:p-6 lg:p-8">
+            <!-- Dashboard Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                <!-- Sales Chart -->
+                <div class="lg:col-span-2 bg-gray-900 rounded-xl shadow-lg p-6">
+                    <div class="flex items-center mb-4">
+                        <div class="text-green-500 mr-3">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-white">Sales Revenue</h3>
+                    </div>
+                    <div>
+                        <canvas id="salesChart" style="width: 100%; height: 300px;"></canvas>
+                    </div>
+                </div>
+                <!-- Metric Cards -->
+                <div class="bg-gray-900 rounded-xl shadow-lg p-6">
+                    <div class="flex items-center mb-4">
+                        <div class="text-green-500 mr-3"><svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg></div>
+                        <h3 class="text-lg font-semibold text-white">Net Income (YTD)</h3>
+                    </div>
+                    <div>
+                        <p id="metric-net-income" class="text-4xl font-bold text-white">$0</p>
+                        <p class="text-sm text-gray-400 mt-1">Year-to-date profit</p>
+                    </div>
+                </div>
+                <div class="bg-gray-900 rounded-xl shadow-lg p-6">
+                    <div class="flex items-center mb-4">
+                        <div class="text-green-500 mr-3"><svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.653-.184-1.268-.5-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.653.184-1.268.5-1.857m0 0a5.002 5.002 0 019 0m-4.5 4.5a5.002 5.002 0 01-9 0m4.5-4.5a5 5 0 100-10 5 5 0 000 10z" /></svg></div>
+                        <h3 class="text-lg font-semibold text-white">Team Headcount</h3>
+                    </div>
+                    <div>
+                        <p id="metric-headcount" class="text-4xl font-bold text-white">0</p>
+                        <p class="text-sm text-gray-400 mt-1">Active employees</p>
+                    </div>
+                </div>
+                <!-- AI Engine -->
+                <div class="lg:col-span-2 bg-gray-900 rounded-xl shadow-lg p-6">
+                    <div class="flex items-center mb-4">
+                        <div class="text-green-500 mr-3"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg></div>
+                        <h3 class="text-lg font-semibold text-white">AI Quick Insight</h3>
+                    </div>
+                    <div class="space-y-4">
+                        <form id="ai-form" class="flex space-x-2">
+                            <input type="text" id="ai-prompt-input" placeholder="Ask a question about your business..." class="flex-grow bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500" />
+                            <button type="submit" id="ai-submit-button" class="flex items-center justify-center bg-green-600 text-white font-semibold px-4 py-2 rounded-md hover:bg-green-500 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors">
+                                <span id="ai-button-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m11-13v4m2-2h-4m2 13h4m-2-2v4M12 3v4m-2 15h4m4-11h-4a1 1 0 00-1 1v2a1 1 0 001 1h4a1 1 0 001-1v-2a1 1 0 00-1-1z" /></svg>
+                                </span>
+                                <span class="ml-2">Ask</span>
+                            </button>
+                        </form>
+                        <div id="ai-example-prompts" class="flex flex-wrap gap-2"></div>
+                        <div id="ai-result-container" class="mt-4 p-4 bg-gray-800 rounded-lg min-h-[80px] hidden">
+                            <p id="ai-result-text" class="text-gray-200 whitespace-pre-wrap"></p>
+                        </div>
+                    </div>
+                </div>
+                <!-- Low Stock Table -->
+                <div class="lg:col-span-2 bg-gray-900 rounded-xl shadow-lg p-6 overflow-x-auto">
+                    <div class="flex items-center mb-4">
+                        <div class="text-green-500 mr-3"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg></div>
+                        <h3 class="text-lg font-semibold text-white">Low Stock Items</h3>
+                    </div>
+                    <table class="w-full text-left text-sm">
+                        <thead>
+                            <tr class="border-b border-green-800 text-gray-400">
+                                <th class="py-2 px-3 font-medium">Product Name</th>
+                                <th class="py-2 px-3 font-medium text-center">In Stock</th>
+                                <th class="py-2 px-3 font-medium text-center">Reorder Level</th>
+                            </tr>
+                        </thead>
+                        <tbody id="low-stock-table-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+        <footer class="text-center py-4 border-t border-green-800 text-sm text-gray-500">
+            <p>Powered by yapweijun1996</p>
+        </footer>
+    </div>
+    </div>
+    <script type="module">
+        import { GoogleGenAI } from "@google/genai";
+
+        // --- DATA ---
+        const salesData = [
+          { month: 'Jan', revenue: 4000, unitsSold: 240 },
+          { month: 'Feb', revenue: 3000, unitsSold: 139 },
+          { month: 'Mar', revenue: 2000, unitsSold: 980 },
+          { month: 'Apr', revenue: 2780, unitsSold: 390 },
+          { month: 'May', revenue: 1890, unitsSold: 480 },
+          { month: 'Jun', revenue: 2390, unitsSold: 380 },
+          { month: 'Jul', revenue: 3490, unitsSold: 430 },
+        ];
+        const inventoryData = [
+          { id: 'SKU-001', name: 'Quantum Processor', stock: 15, category: 'CPU', reorderLevel: 20 },
+          { id: 'SKU-002', name: 'Hyper-Drive SSD 1TB', stock: 50, category: 'Storage', reorderLevel: 30 },
+          { id: 'SKU-003', name: 'DDR6 RAM 32GB Kit', stock: 8, category: 'Memory', reorderLevel: 10 },
+          { id: 'SKU-004', name: 'Photon-Cooling Fan', stock: 120, category: 'Cooling', reorderLevel: 50 },
+          { id: 'SKU-005', name: 'Titanium-Alloy Case', stock: 22, category: 'Chassis', reorderLevel: 25 },
+        ];
+        const financialsData = {
+            revenue: 16550, cogs: 7200, grossProfit: 9350, operatingExpenses: 4500, netIncome: 4850
+        };
+        const teamHeadcount = 128;
+
+        // --- DOM Elements ---
+        const sidebar = document.getElementById('sidebar');
+        const menuButton = document.getElementById('menu-button');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        const apiKeyInput = document.getElementById('api-key-input');
+        const modelSelect = document.getElementById('model-select');
+        const aiForm = document.getElementById('ai-form');
+        const aiPromptInput = document.getElementById('ai-prompt-input');
+        const aiSubmitButton = document.getElementById('ai-submit-button');
+        const aiButtonIcon = document.getElementById('ai-button-icon');
+        const aiResultContainer = document.getElementById('ai-result-container');
+        const aiResultText = document.getElementById('ai-result-text');
+        const aiExamplePromptsContainer = document.getElementById('ai-example-prompts');
+
+
+        // --- IndexedDB Helpers ---
+        const DB_NAME = 'ERPInsightsDB';
+        const STORE_NAME = 'settings';
+        let db;
+
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                if (db) return resolve(db);
+                const request = indexedDB.open(DB_NAME, 1);
+                request.onupgradeneeded = event => {
+                    const dbInstance = event.target.result;
+                    if (!dbInstance.objectStoreNames.contains(STORE_NAME)) {
+                        dbInstance.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                    }
+                };
+                request.onsuccess = event => {
+                    db = event.target.result;
+                    resolve(db);
+                };
+                request.onerror = event => {
+                    console.error('IndexedDB error:', event.target.errorCode);
+                    reject('IndexedDB error');
+                };
+            });
+        }
+
+        async function saveSetting(id, value) {
+            const db = await initDB();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.put({ id, value });
+                request.onsuccess = () => resolve();
+                request.onerror = event => reject(event.target.error);
+            });
+        }
+
+        async function getSetting(id) {
+            const db = await initDB();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readonly');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.get(id);
+                request.onsuccess = event => {
+                    resolve(event.target.result ? event.target.result.value : undefined);
+                };
+                request.onerror = event => reject(event.target.error);
+            });
+        }
+
+
+        // --- App Logic ---
+        document.addEventListener('DOMContentLoaded', () => {
+            setupMobileMenu();
+            setupApiKey();
+            renderMetricCards();
+            renderSalesChart();
+            renderLowStockTable();
+            setupAIEngine();
+        });
+
+        function setupMobileMenu() {
+            menuButton.addEventListener('click', () => {
+                sidebar.classList.toggle('-translate-x-full');
+                sidebarOverlay.classList.toggle('hidden');
+            });
+            sidebarOverlay.addEventListener('click', () => {
+                sidebar.classList.add('-translate-x-full');
+                sidebarOverlay.classList.add('hidden');
+            });
+        }
+
+        async function setupApiKey() {
+            try {
+                const savedKey = await getSetting('gemini-api-key');
+                if (savedKey) {
+                    apiKeyInput.value = savedKey;
+                }
+            } catch (error) {
+                console.error("Could not load API key from IndexedDB", error);
+            }
+            
+            apiKeyInput.addEventListener('input', async (e) => {
+                try {
+                    await saveSetting('gemini-api-key', e.target.value);
+                } catch (error) {
+                    console.error("Could not save API key to IndexedDB", error);
+                }
+            });
+        }
+        
+        const formatCurrency = (value) =>
+            new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
+
+        function renderMetricCards() {
+            document.getElementById('metric-net-income').textContent = formatCurrency(financialsData.netIncome);
+            document.getElementById('metric-headcount').textContent = String(teamHeadcount);
+        }
+
+        function renderSalesChart() {
+            const ctx = document.getElementById('salesChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: salesData.map(d => d.month),
+                    datasets: [{
+                        label: 'Revenue',
+                        data: salesData.map(d => d.revenue),
+                        borderColor: '#48bb78', // green-400
+                        backgroundColor: 'rgba(72, 187, 120, 0.2)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { 
+                            beginAtZero: true,
+                            ticks: { color: '#9ca3af' },
+                            grid: { color: '#4a5568' }
+                        },
+                        x: {
+                            ticks: { color: '#9ca3af' },
+                            grid: { color: '#4a5568' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#2d3748',
+                            titleColor: '#e2e8f0',
+                            bodyColor: '#e2e8f0',
+                            borderColor: '#4a5568',
+                            borderWidth: 1
+                        }
+                    }
+                }
+            });
+        }
+        
+        function renderLowStockTable() {
+            const lowStockItems = inventoryData.filter(item => item.stock < item.reorderLevel);
+            const tableBody = document.getElementById('low-stock-table-body');
+            if (lowStockItems.length > 0) {
+                tableBody.innerHTML = lowStockItems.map(item => `
+                    <tr class="border-b border-green-800 last:border-none">
+                        <td class="py-3 px-3">${item.name}</td>
+                        <td class="py-3 px-3 text-center text-red-400 font-bold">${item.stock}</td>
+                        <td class="py-3 px-3 text-center">${item.reorderLevel}</td>
+                    </tr>
+                `).join('');
+            } else {
+                tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-gray-500">All inventory levels are healthy.</td></tr>`;
+            }
+        }
+
+        async function getInsight(prompt, apiKey, modelName) {
+            if (!apiKey) {
+                throw new Error("API Key is not configured. Please set it in the Settings section.");
+            }
+
+            const ai = new GoogleGenAI({ apiKey });
+            
+            const fullPrompt = `
+              You are an expert ERP system analyst for a tech hardware company. 
+              Analyze the following business data and answer the user's question concisely and professionally.
+              
+              **Business Data:**
+              - Sales Data (last 7 months): ${JSON.stringify(salesData)}
+              - Current Inventory: ${JSON.stringify(inventoryData)}
+              - Financial Summary (YTD): ${JSON.stringify(financialsData)}
+
+              **User's Question:**
+              "${prompt}"
+            `;
+
+            const response = await ai.models.generateContent({
+                model: modelName,
+                contents: fullPrompt,
+                config: { temperature: 0.2, topP: 0.9 }
+            });
+
+            return response.text;
+        }
+
+        function setupAIEngine() {
+            const examplePrompts = [
+                "Which product is lowest in stock?",
+                "Summarize our financial performance this year.",
+                "What was our best month for revenue?",
+                "Are there any inventory items we should reorder soon?",
+            ];
+            
+            aiExamplePromptsContainer.innerHTML = examplePrompts.map(p => 
+                `<button data-prompt="${p}" class="ai-example-btn text-xs bg-gray-700 hover:bg-green-800 text-gray-300 px-2 py-1 rounded-md transition-colors disabled:opacity-50">${p}</button>`
+            ).join('');
+            
+            document.querySelectorAll('.ai-example-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const prompt = e.target.dataset.prompt;
+                    aiPromptInput.value = prompt;
+                    handlePromptSubmit(prompt);
+                });
+            });
+
+            aiForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                handlePromptSubmit(aiPromptInput.value);
+            });
+        }
+
+        async function handlePromptSubmit(prompt) {
+             if (!prompt.trim()) return;
+
+            setLoadingState(true);
+            aiResultContainer.style.display = 'block';
+            aiResultText.className = 'text-gray-400 animate-pulse';
+            aiResultText.textContent = 'AI is thinking...';
+            
+            try {
+                const apiKey = apiKeyInput.value;
+                const modelName = modelSelect.value;
+                const result = await getInsight(prompt, apiKey, modelName);
+                aiResultText.className = 'text-gray-200 whitespace-pre-wrap';
+                aiResultText.textContent = result;
+            } catch (err) {
+                aiResultText.className = 'text-red-400';
+                aiResultText.textContent = err.message || 'An unknown error occurred.';
+                console.error(err);
+            } finally {
+                setLoadingState(false);
+            }
+        }
+
+        function setLoadingState(isLoading) {
+            aiSubmitButton.disabled = isLoading;
+            aiPromptInput.disabled = isLoading;
+            document.querySelectorAll('.ai-example-btn').forEach(b => b.disabled = isLoading);
+            
+            if (isLoading) {
+                aiButtonIcon.innerHTML = `<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+            } else {
+                aiButtonIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m11-13v4m2-2h-4m2 13h4m-2-2v4M12 3v4m-2 15h4m4-11h-4a1 1 0 00-1 1v2a1 1 0 001 1h4a1 1 0 001-1v-2a1 1 0 00-1-1z" /></svg>`;
+            }
+        }
+
+    </script>
+</body>
+</html>
